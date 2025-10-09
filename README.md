@@ -61,31 +61,75 @@ Note: bfcache availability may vary based on your Full Page Cache engine.
 * **Auto Close Menu** - Automatically close open menus when page is restored from back/forward cache (for compatible themes). (Default: Yes)
 * **Exclude URLs** - Optional configuration to exclude specific URL patterns from back/forward cache. Enter URL parts (substring), one per line. The extension automatically excludes non-cacheable URLs, so this is only needed for custom cached URLs that load private data via JavaScript.
 
-#### Varnish & Fastly Configuration
+#### If you use Varnish FPC
 
-For the Back/Forward Cache feature to work when using Varnish or Fastly as your Full Page Cache, a small modification to your VCL (Varnish Configuration Language) is required. This change is necessary to prevent Varnish/Fastly from sending the `Cache-Control: no-store` header for publicly cacheable pages, as this header instructs browsers not to use bfcache.
-
-The logic is the same for both Varnish and Fastly. You will need to add the following snippet to your `vcl_deliver` subroutine, which checks if a page is marked as `public` by Magento and, if so, removes the `no-store` directive that would otherwise block bfcache.
-
-**Recommended VCL Snippet**
+For the Back/Forward Cache feature to work with Varnish Full Page Cache, you must modify your VCL file's `vcl_deliver` subroutine by updating the existing Cache-Control header logic.
 
 ```vcl
 sub vcl_deliver {
-
-// Update following line: //
-set resp.http.Cache-Control = "no-store, no-cache, must-revalidate, max-age=0";
-
-// To: //
-    if (resp.http.Cache-Control ~ "public") {
-        set resp.http.Cache-Control = "no-cache, must-revalidate, max-age=0";
-    } else {
-        set resp.http.Cache-Control = "no-store, no-cache, must-revalidate, max-age=0";
-    }
+  # Find the existing line that sets Cache-Control, like:
+  set resp.http.Cache-Control = "no-store, no-cache, must-revalidate, max-age=0";
+  
+  # Replace it with:
+  if (resp.http.Cache-Control ~ "public") {
+      set resp.http.Cache-Control = "no-cache, must-revalidate, max-age=0";
+  } else {
+      set resp.http.Cache-Control = "no-store, no-cache, must-revalidate, max-age=0";
+  }
 }
 ```
 
-For users seeking a more comprehensive Varnish solution for Magento, we recommend considering the [elgentos/magento2-varnish-extended](https://github.com/elgentos/magento2-varnish-extended) module. It provides advanced features and improvements for Varnish, including bfcache compatibility.
+- This modification requires manual VCL file editing and Varnish service restart
+- Test thoroughly in a staging environment before deploying to production
+- Consider using [elgentos/magento2-varnish-extended](https://github.com/elgentos/magento2-varnish-extended) for a more complete enhanced Varnish configuration
 
+#### If you use Fastly (including Adobe Commerce Cloud)
+
+For Fastly CDN, you must create two custom VCL snippets through the Magento admin panel, as follows:
+
+**Step 1: Access VCL Snippets**
+1. Navigate to **Stores** > **Settings** > **Configuration** > **Advanced** > **System**
+2. Expand **Full Page Cache** > **Fastly Configuration** > **Custom VCL Snippets**
+3. Click **Create Custom Snippet**
+
+**Step 2: Configure Snippet 1**
+- **Name**: `bfcache-preserve-public-private`
+- **Type**: `fetch`
+- **Priority**: `1`
+- **VCL Content**:
+
+```vcl
+if (beresp.http.Cache-Control) {
+    if (beresp.http.Cache-Control ~ "public") {
+        set beresp.http.X-MageOS-Bfcache = "public";
+    } else {
+        set beresp.http.X-MageOS-Bfcache  = "private";
+    }
+}
+```
+Save the snippet  
+Click **Create Custom Snippet** again
+
+**Step 3: Configure Snippet 2**
+- **Name**: `bfcache-remove-ccns`
+- **Type**: `deliver`
+- **Priority**: `100`
+- **VCL Content**:
+
+```vcl
+if (fastly.ff.visits_this_service == 0 && req.restarts == 0) {
+    if (resp.http.X-MageOS-Bfcache == "public") {
+       set resp.http.Cache-Control = "no-cache, must-revalidate, max-age=0";
+    }
+}
+
+unset resp.http.X-MageOS-Bfcache;
+```
+Save the snippet
+
+**Step 4: Deploy**
+
+Click **Upload VCL to Fastly**, and Activate the uploaded VCL
 ## Contributors
 
 Initial module, page transitions, and speculation rules contributed by [@rhoerr](https://github.com/rhoerr).
