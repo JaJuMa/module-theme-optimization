@@ -107,8 +107,8 @@ $script = <<<JS
             actionRefreshMiniCart() {
                 require([
                     'Magento_Customer/js/customer-data'
-                ], function (customerData) {
-                    customerData.reload(['cart'], true);
+                ], customerData => {
+                    customerData.reload([], true);
                 });
             }
     
