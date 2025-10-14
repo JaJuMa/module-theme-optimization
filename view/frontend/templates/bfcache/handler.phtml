@@ -48,6 +48,7 @@ $script = <<<JS
             }
     
             init() {
+                this._customerDataInitialized = false;
                 this.refreshMiniCart();
                 this.reloadCustomerLoginPage();
                 this.actionAutoCloseMenu(this.options.autoCloseMenuMobile);
@@ -102,25 +103,17 @@ $script = <<<JS
             }
     
             /**
-             * Dispatch Magento event to refresh customer sections (minicart, etc.)
+             * Dispatch Magento event to refresh customer sections (minicart, wishlist, etc.)
              */
             actionRefreshMiniCart() {
-                require([
-                    'Magento_Customer/js/customer-data'
-                ], customerData => {
-                    customerData.reload([], true);
-                });
+                this.initCustomerData();
             }
     
             /**
              * Close minicart & optionally close mobile menu
              */
             actionAutoCloseMenu(autoCloseMenuMobile) {
-                require([
-                    'Magento_Customer/js/customer-data'
-                ], ((customerData) => {
-                    customerData.reload(['messages'], true);
-    
+                this.initCustomerData(() => {
                     const minicartCloseButton = document.querySelector(this.selectors.minicartCloseButton);
                     if (minicartCloseButton) {
                         minicartCloseButton.click();
@@ -129,9 +122,24 @@ $script = <<<JS
                     if (autoCloseMenuMobile) {
                         this.handleMenuClosure();
                     }
-                }).bind(this));
+                });
             }
     
+            /**
+             * Init customer data if not already initialized
+             */
+            initCustomerData(callback = null) {
+                require(['Magento_Customer/js/customer-data'], customerData => {
+                    if (!this._customerDataInitialized) {
+                        customerData.init();
+                        this._customerDataInitialized = true;
+                    }
+                    if (callback && typeof callback === 'function') {
+                        callback();
+                    }
+                });
+            }
+
             /**
              * Handle closing of mobile menu
              */
