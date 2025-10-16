@@ -79,7 +79,9 @@ class SpeculationRules implements ArgumentInterface
         // Hyva theme uses a custom event, Luma uses RequireJS
         $reloadAction = $this->isHyva()
             ? "window.dispatchEvent(new CustomEvent('reload-customer-section-data'));"
-            : "require('Magento_Customer/js/customer-data').init();";
+            : "require(['Magento_Customer/js/customer-data'], customerData => {
+                    customerData.init();
+               });";
 
         return <<<JS
         (() => {
