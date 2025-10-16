@@ -12,9 +12,17 @@ use MageOS\ThemeOptimization\ViewModel\SpeculationRules;
 /** @var SpeculationRules $viewModel */
 $viewModel = $block->getViewModel();
 ?>
-<?= $secureRenderer->renderTag(
+<?= /* @noEscape */ $secureRenderer->renderTag(
     'script',
     ['type' => 'speculationrules'],
     $viewModel->getSpeculationRulesJson(),
     false
 ) ?>
+<?php if ($prerenderingScript = $viewModel->getPrerenderingScript()): ?>
+    <?= /* @noEscape */ $secureRenderer->renderTag(
+        'script',
+        ['type' => 'text/javascript'],
+        $prerenderingScript,
+        false
+    ) ?>
+<?php endif; ?>

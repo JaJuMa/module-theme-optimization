@@ -11,7 +11,9 @@ use Magento\Store\Model\ScopeInterface;
 class SpeculationRules implements ArgumentInterface
 {
     protected const CONFIG_PATH = 'system/speculation_rules/';
-    protected const FETCH_MODES = ['prefetch', 'prerender'];
+    protected const MODE_PREFETCH = 'prefetch';
+    protected const MODE_PRERENDER = 'prerender';
+    protected const FETCH_MODES = [self::MODE_PREFETCH, self::MODE_PRERENDER];
     protected const EAGERNESS_MODES = ['conservative', 'moderate', 'eager'];
 
     public function __construct(
@@ -35,7 +37,7 @@ class SpeculationRules implements ArgumentInterface
             return $mode;
         }
 
-        return 'prefetch';
+        return self::MODE_PREFETCH;
     }
 
     public function getEagerness(): string
@@ -47,6 +49,39 @@ class SpeculationRules implements ArgumentInterface
         }
 
         return 'moderate';
+    }
+
+    /**
+     * Check if the current mode is prerender
+     *
+     * @return bool
+     */
+    public function isPrerenderMode(): bool
+    {
+        return $this->getMode() === self::MODE_PRERENDER;
+    }
+
+    /**
+     * Get prerendering change script for customer data reinitialization
+     * Returns script only when prerender mode is enabled
+     *
+     * @return string
+     */
+    public function getPrerenderingScript(): string
+    {
+        if (!$this->isPrerenderMode()) {
+            return '';
+        }
+
+        return <<<JS
+        (() => {
+            if (document.prerendering) {
+                document.addEventListener("prerenderingchange", () => {
+                    require('Magento_Customer/js/customer-data').init();
+                }, { once: true });
+            }
+        })();
+        JS;
     }
 
     public function getSpeculationRules(): array
