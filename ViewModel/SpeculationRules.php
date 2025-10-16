@@ -6,6 +6,7 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
+use Magento\Framework\View\DesignInterface;
 use Magento\Store\Model\ScopeInterface;
 
 class SpeculationRules implements ArgumentInterface
@@ -20,6 +21,7 @@ class SpeculationRules implements ArgumentInterface
         protected ScopeConfigInterface $scopeConfig,
         protected UrlInterface         $urlBuilder,
         protected SerializerInterface  $serializer,
+        protected DesignInterface      $viewDesign
     )
     {
     }
@@ -64,6 +66,7 @@ class SpeculationRules implements ArgumentInterface
     /**
      * Get prerendering change script for customer data reinitialization
      * Returns script only when prerender mode is enabled
+     * Uses different approaches for Hyva vs Luma themes
      *
      * @return string
      */
@@ -73,11 +76,16 @@ class SpeculationRules implements ArgumentInterface
             return '';
         }
 
+        // Hyva theme uses a custom event, Luma uses RequireJS
+        $reloadAction = $this->isHyva()
+            ? "window.dispatchEvent(new CustomEvent('reload-customer-section-data'));"
+            : "require('Magento_Customer/js/customer-data').init();";
+
         return <<<JS
         (() => {
             if (document.prerendering) {
                 document.addEventListener("prerenderingchange", () => {
-                    require('Magento_Customer/js/customer-data').init();
+                    $reloadAction
                 }, { once: true });
             }
         })();
@@ -182,5 +190,22 @@ class SpeculationRules implements ArgumentInterface
         }
 
         return $rules;
+    }
+
+    /**
+     * Check if current theme is Hyva or extends from Hyva
+     *
+     * @return bool
+     */
+    private function isHyva(): bool
+    {
+        $theme = $this->viewDesign->getDesignTheme();
+        while ($theme) {
+            if (strpos($theme->getCode(), 'Hyva/') === 0) {
+                return true;
+            }
+            $theme = $theme->getParentTheme();
+        }
+        return false;
     }
 }
