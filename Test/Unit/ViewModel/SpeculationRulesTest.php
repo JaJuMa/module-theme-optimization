@@ -5,6 +5,7 @@ namespace MageOS\ThemeOptimization\Test\Unit\ViewModel;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\UrlInterface;
+use Magento\Framework\View\DesignInterface;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Store\Model\ScopeInterface;
 use MageOS\ThemeOptimization\ViewModel\SpeculationRules;
@@ -28,6 +29,11 @@ class SpeculationRulesTest extends TestCase
     private $serializerMock;
 
     /**
+     * @var DesignInterface
+     */
+    private $viewDesignMock;
+
+    /**
      * @var SpeculationRules
      */
     private $speculationRules;
@@ -37,11 +43,13 @@ class SpeculationRulesTest extends TestCase
         $this->scopeConfigMock = $this->createMock(ScopeConfigInterface::class);
         $this->urlBuilderMock = $this->createMock(UrlInterface::class);
         $this->serializerMock = $this->createMock(SerializerInterface::class);
+        $this->viewDesignMock = $this->createMock(DesignInterface::class);
 
         $this->speculationRules = new SpeculationRules(
             $this->scopeConfigMock,
             $this->urlBuilderMock,
-            $this->serializerMock
+            $this->serializerMock,
+            $this->viewDesignMock
         );
     }
 
